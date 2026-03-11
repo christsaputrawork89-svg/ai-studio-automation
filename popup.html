@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{width:360px;font-family:'Segoe UI',sans-serif;background:#0f0f23;color:#e0e0e0;padding:14px}
+h2{text-align:center;font-size:15px;margin-bottom:12px;color:#4fc3f7}
+.s{margin-bottom:10px}
+label{display:block;font-size:11px;color:#90a4ae;margin-bottom:3px}
+input[type=number]{width:100%;padding:7px;border:1px solid #2a2a4a;border-radius:5px;background:#1a1a3e;color:#fff;font-size:13px}
+textarea{width:100%;padding:7px;border:1px solid #2a2a4a;border-radius:5px;background:#1a1a3e;color:#fff;font-size:11px;font-family:Consolas,monospace;resize:vertical;line-height:1.4}
+textarea:focus,input:focus{outline:none;border-color:#4fc3f7}
+.qi{font-size:10px;color:#78909c;margin-top:3px}
+.pb{width:100%;height:5px;background:#1a1a3e;border-radius:3px;margin:6px 0;display:none}
+.pf{height:100%;background:linear-gradient(90deg,#4fc3f7,#00e676);border-radius:3px;width:0%;transition:width .3s}
+.st{font-size:11px;padding:6px;background:#1a1a3e;border-radius:5px;margin-bottom:8px;color:#b0bec5;min-height:18px;word-break:break-word}
+.br{display:flex;gap:6px}
+.b{flex:1;padding:9px;border:none;border-radius:6px;font-size:13px;font-weight:bold;cursor:pointer}
+.b:disabled{opacity:.4;cursor:not-allowed}
+.bg{background:linear-gradient(135deg,#00e676,#00c853);color:#000}
+.bs{background:linear-gradient(135deg,#ff5252,#d32f2f);color:#fff}
+</style>
+</head>
+<body>
+<h2>AI Studio Automation</h2>
+<div class="s"><label>Delay antar prompt (detik)</label><input type="number" id="d" value="30" min="5" max="300"></div>
+<div class="s"><label>Daftar Prompt (1 per baris)</label><textarea id="p" rows="10" placeholder="Tulis prompt di sini...
+Satu prompt per baris.
+
+Contoh:
+Buatkan gambar kucing kartun
+Buatkan gambar anjing realistik"></textarea><div class="qi" id="qi">0 prompt</div></div>
+<div class="pb" id="pc"><div class="pf" id="pf"></div></div>
+<div class="st" id="st">Siap. Buka aistudio.google.com lalu klik Run.</div>
+<div class="br"><button class="b bg" id="r">Run</button><button class="b bs" id="x" disabled>Stop</button></div>
+<script>
+var p=document.getElementById('p'),d=document.getElementById('d'),r=document.getElementById('r'),x=document.getElementById('x'),st=document.getElementById('st'),qi=document.getElementById('qi'),pc=document.getElementById('pc'),pf=document.getElementById('pf');
+p.addEventListener('input',function(){var a=gp();qi.textContent=a.length+' prompt'});
+function gp(){return p.value.split('\n').map(function(s){return s.trim()}).filter(function(s){return s.length>0})}
+function send(msg){chrome.tabs.query({active:true,currentWindow:true},function(tabs){if(tabs[0]){chrome.scripting.executeScript({target:{tabId:tabs[0].id},func:function(m){window.postMessage(m,'*')},args:[msg]})}})}
+r.addEventListener('click',function(){var a=gp();if(a.length===0){st.textContent='Tidak ada prompt!';return}r.disabled=true;x.disabled=false;pc.style.display='block';send({source:'AI_STUDIO_AUTO_POPUP',type:'START',prompts:a,delay:parseInt(d.value)||30});st.textContent='Memulai...'});
+x.addEventListener('click',function(){send({source:'AI_STUDIO_AUTO_POPUP',type:'STOP'});r.disabled=false;x.disabled=true;st.textContent='Dihentikan'});
+chrome.runtime.onMessage.addListener(function(msg){if(msg.type==='STATUS_UPDATE')us(msg)});
+function us(data){var pr=data.total>0?((data.current+1)/data.total)*100:0;pf.style.width=pr+'%';if(data.status==='processing')st.textContent='Prompt '+(data.current+1)+'/'+data.total+': Memproses...';else if(data.status==='generating')st.textContent='Prompt '+(data.current+1)+'/'+data.total+': Menunggu AI...';else if(data.status==='delay')st.textContent=data.detail;else if(data.status==='completed'){st.textContent='Selesai! '+data.total+' prompt diproses.';r.disabled=false;x.disabled=true}else if(data.status==='stopped'){st.textContent='Berhenti di prompt '+(data.current+1);r.disabled=false;x.disabled=true}else if(data.status==='error'){st.textContent='Error: '+data.detail;r.disabled=false;x.disabled=true}}
+</script>
+</body>
+</html>
